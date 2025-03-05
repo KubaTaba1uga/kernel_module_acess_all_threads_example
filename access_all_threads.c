@@ -22,6 +22,7 @@ MODULE_VERSION("0.1");
 
 static int mp_max_threads;
 static void show_all_threads(int);
+static void show_all_subthreads(struct task_struct *current_thread);
 
 static int __init access_all_threads_init(void) {
   pr_info("Inserted\n");
@@ -52,6 +53,7 @@ static void __exit access_all_threads_exit(void) {
 static void show_all_threads(int max) {
   // `struct task_struct` holds thread data.
   struct task_struct *current_thread, *first_thread;
+  int i = 0;
 
   // `get_current` fetches currently processed thread.
   first_thread = current_thread = get_current();
@@ -60,21 +62,71 @@ static void show_all_threads(int max) {
     max = INT_MAX;
   }
 
-  while (max-- > 0) {
-    pr_info("Address=%p, "
+  while (i++ < max) {
+    pr_info("Name=%s, "
+            "Address=%p, "
             "Pid=%d, "
-            "Name=%s, "
+            "Tgid=%d,  "
             "\n",
-            current_thread, current_thread->pid, current_thread->comm);
+            current_thread->comm, current_thread, current_thread->pid,
+            current_thread->tgid);
+
+    show_all_subthreads(current_thread);
 
     current_thread = next_task(current_thread);
 
     if (current_thread == first_thread) {
-      pr_info("Stoping iteration\n\n\n");
       break;
     }
+
+    pr_info(
+        "------------------------------------------------------------------\n");
   }
+
+  pr_info("All threads amount: %d\n\n\n", i - 1);
 };
+
+static void show_all_subthreads(struct task_struct *current_thread) {
+  struct task_struct *subthread;
+  int i = 0;
+
+  // In kernel every scheduable computin unit is a thread.
+  // However there are few types of threads. When you are
+  // forking your process then you are creating subprocess
+  // with it's own PID nad TGID.
+  pr_info("Forked threads (aka subprocesses):\n");
+
+  list_for_each_entry(subthread, &current_thread->children, sibling) {
+    i++;
+    pr_info("Name=%s, "
+            "Address=%p, "
+            "Pid=%d, "
+            "Tgid=%d,  "
+            "\n",
+            subthread->comm, subthread, subthread->pid, subthread->tgid);
+  }
+
+  pr_info("All forked threads amount: %d\n", i);
+  i = 0;
+
+  // When you are cloning your process then you are
+  // creating subthread (look on spawn_threads.py for more
+  // info). Cubthread has it's own PID but it shares TGID
+  // with it's parent.
+  pr_info("Cloned threads (aka subthreads):\n");
+
+  list_for_each_entry(subthread, &current_thread->thread_group, thread_group) {
+    i++;
+    pr_info("Name=%s, "
+            "Address=%p, "
+            "Pid=%d, "
+            "Tgid=%d,  "
+            "\n",
+            subthread->comm, subthread, subthread->pid, subthread->tgid);
+  }
+
+  pr_info("All cloned threads amount: %d\n", i);
+}
 
 module_param(mp_max_threads, int, 0);
 MODULE_PARM_DESC(
