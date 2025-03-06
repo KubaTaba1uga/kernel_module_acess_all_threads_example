@@ -19,18 +19,28 @@ A simple Linux kernel module that demonstrates how to access and display informa
   ```bash
   sudo insmod access_all_threads.ko mp_max_threads=0
   ```
+  
+- **Spawn some threads** The spawn_threads.py script spawns multiple threads using Python:
+  ```bash
+  python3 spawn_threads.py
+  ```  
+  
 - **View kernel logs** to see the thread information:
   ```bash
   dmesg | tail
   ```
+  
 - **Unload the module**:
   ```bash
   sudo rmmod access_all_threads
   ```
+  
 - **Check kernel logs again** for module removal messages:
   ```bash
   dmesg | tail
   ```
+
+Using the module with mp_max_threads=1 is quite interesting—it then displays only the thread currently running on the CPU. It is surprising to observe that in Linux, the thread executes the LKM code directly, without any intermediary daemon process.
 
 ## License
 

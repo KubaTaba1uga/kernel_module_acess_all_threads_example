@@ -90,10 +90,31 @@ static void show_all_subthreads(struct task_struct *current_thread) {
   struct task_struct *subthread;
   int i = 0;
 
-  // In kernel every scheduable computin unit is a thread.
-  // However there are few types of threads. When you are
-  // forking your process then you are creating subprocess
-  // with it's own PID nad TGID.
+  // In kernel every scheduable computin unit is a thread. However there are
+  //  few types of threads. When you are forking your process then you are
+  //  creating subprocess with it's own PID nad TGID. In kernel/fork.c we
+  //  can find `kernel_clone` function which is equivalent of fork.
+  //  To confirm do:
+  //     gcc fork_process.c -o fork_process
+  //     strace ./fork_process
+  //  You should see sth like:
+  //    clone(child_stack=NULL,
+  //    flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD,
+  //    child_tidptr=0x7f93b0d81a10) = 2148
+  //  It's actually fork but realised via clone syscall.
+  //
+  //  When you're cloning your process then you're creating a subthread
+  //  with it's own PID but with shared TGID amoung it's parent and it's
+  //  siblings. To confirm do:
+  //     gcc clone_process.c -o clone_process
+  //     strace ./clone_process
+  //  You should see sth like:
+  //     clone3({flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID,
+  //     child_tid=0x7f7971ce0990, parent_tid=0x7f7971ce0990, exit_signal=0,
+  //     stack=0x7f79714e0000, stack_size=0x7fff80, tls=0x7f7971ce06c0} =>
+  //     {parent_tid=[2191]}, 88) = 2191
+  //  Notice differences in flags used during cloning which actual impact
+  //  can be more understood by studying fork.c src file.
   pr_info("Forked threads (aka subprocesses):\n");
 
   list_for_each_entry(subthread, &current_thread->children, sibling) {
